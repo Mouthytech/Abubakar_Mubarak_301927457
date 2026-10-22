@@ -1,0 +1,48 @@
+=================== BEFORE INDEXING ===================
+=== A BEFORE: order history for customer 25 ===
+                     ->  Seq Scan on orders o  (cost=0.00..1038.12 rows=24 width=21) (actual time=0.082..2.017 rows=31 loops=1)
+                     ->  Index Scan using order_items_pkey on order_items oi  (cost=0.29..9.84 rows=2 width=13) (actual time=0.003..0.003 rows=2 loops=31)
+ Execution Time: 2.228 ms
+=== B BEFORE: daily sales, 1 to 7 October 2026 ===
+               ->  Seq Scan on order_items oi  (cost=0.00..1638.15 rows=100015 width=13) (actual time=0.003..5.169 rows=100015 loops=1)
+                     ->  Seq Scan on orders o  (cost=0.00..1288.18 rows=488 width=12) (actual time=0.004..2.241 rows=486 loops=1)
+ Execution Time: 14.538 ms
+=== C BEFORE: oldest pending orders ===
+         ->  Seq Scan on orders o  (cost=0.00..1413.20 rows=1533 width=16) (actual time=0.006..3.038 rows=1547 loops=1)
+ Execution Time: 3.239 ms
+=== D BEFORE: units and revenue for Redmi Note 13 (product 5) ===
+   ->  Seq Scan on order_items  (cost=0.00..1888.19 rows=6058 width=9) (actual time=0.008..4.355 rows=6152 loops=1)
+ Execution Time: 5.650 ms
+=== E BEFORE: revenue by category (whole table) ===
+                     ->  Seq Scan on order_items oi  (cost=0.00..1638.15 rows=100015 width=13) (actual time=0.002..5.835 rows=100015 loops=1)
+                           ->  Seq Scan on products p  (cost=0.00..1.16 rows=16 width=8) (actual time=0.002..0.004 rows=16 loops=1)
+                     ->  Seq Scan on categories c  (cost=0.00..1.06 rows=6 width=13) (actual time=0.003..0.005 rows=6 loops=1)
+ Execution Time: 70.574 ms
+=================== CREATING INDEXES ===================
+=================== AFTER INDEXING ===================
+=== A AFTER: order history for customer 25 ===
+                     ->  Bitmap Heap Scan on orders o  (cost=4.48..83.42 rows=24 width=21) (actual time=0.036..0.067 rows=31 loops=1)
+                           ->  Bitmap Index Scan on idx_orders_customer_id  (cost=0.00..4.47 rows=24 width=0) (actual time=0.029..0.029 rows=31 loops=1)
+                     ->  Index Scan using order_items_pkey on order_items oi  (cost=0.29..9.84 rows=2 width=13) (actual time=0.003..0.003 rows=2 loops=31)
+ Execution Time: 0.271 ms
+=== B AFTER: daily sales, 1 to 7 October 2026 ===
+               ->  Seq Scan on order_items oi  (cost=0.00..1638.15 rows=100015 width=13) (actual time=0.003..7.292 rows=100015 loops=1)
+                     ->  Bitmap Heap Scan on orders o  (cost=13.49..457.08 rows=483 width=12) (actual time=0.103..0.539 rows=486 loops=1)
+                           ->  Bitmap Index Scan on idx_orders_order_date  (cost=0.00..13.37 rows=508 width=0) (actual time=0.067..0.067 rows=515 loops=1)
+ Execution Time: 18.791 ms
+=== C AFTER: oldest pending orders ===
+   ->  Index Scan using idx_orders_pending_date on orders o  (cost=0.28..1706.61 rows=1509 width=16) (actual time=0.055..0.066 rows=10 loops=1)
+ Execution Time: 0.081 ms
+=== D AFTER: units and revenue for Redmi Note 13 (product 5) ===
+   ->  Index Only Scan using idx_order_items_product_qty on order_items  (cost=0.42..195.98 rows=5918 width=9) (actual time=0.069..0.828 rows=6152 loops=1)
+ Execution Time: 2.242 ms
+=== E AFTER: revenue by category (whole table) ===
+                     ->  Seq Scan on order_items oi  (cost=0.00..1638.15 rows=100015 width=13) (actual time=0.002..5.966 rows=100015 loops=1)
+                           ->  Seq Scan on products p  (cost=0.00..1.16 rows=16 width=8) (actual time=0.002..0.004 rows=16 loops=1)
+                     ->  Seq Scan on categories c  (cost=0.00..1.06 rows=6 width=13) (actual time=0.004..0.005 rows=6 loops=1)
+ Execution Time: 71.039 ms
+=== Index sizes ===
+ idx_order_items_product_qty | 3104 kB
+ idx_orders_customer_id      | 392 kB
+ idx_orders_order_date       | 1112 kB
+ idx_orders_pending_date     | 56 kB
