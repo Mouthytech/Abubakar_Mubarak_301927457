@@ -1,0 +1,164 @@
+SELECT o.order_id, o.order_date, o.status,
+       SUM(oi.quantity * oi.unit_price) AS order_total
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.order_id
+WHERE o.customer_id = 25
+GROUP BY o.order_id
+ORDER BY o.order_date DESC;
+ order_id |         order_date         |  status   | order_total 
+----------+----------------------------+-----------+-------------
+    26417 | 2026-10-19 09:43:28.810389 | delivered |  2316000.00
+     9931 | 2026-10-09 13:13:29.096845 | delivered |   341000.00
+    45849 | 2026-09-19 07:22:45.659707 | delivered |    19000.00
+    33560 | 2026-09-06 23:43:33.087905 | cancelled |   266000.00
+    20277 | 2026-08-26 03:57:45.981605 | delivered |   620000.00
+    41429 | 2026-08-16 01:40:49.333516 | delivered |  2515000.00
+     7962 | 2026-08-14 13:35:56.129668 | delivered |    28000.00
+    37996 | 2026-08-09 20:00:38.078071 | shipped   |   193000.00
+    15075 | 2026-07-24 19:58:26.27935  | delivered |   195000.00
+    33299 | 2026-06-29 12:08:56.292659 | delivered |  1384000.00
+    18162 | 2026-06-26 19:17:13.781157 | delivered |   165000.00
+    44574 | 2026-06-25 11:34:12.6113   | delivered |    45000.00
+    29903 | 2026-05-17 07:33:17.432865 | delivered |  1095000.00
+    29233 | 2026-05-13 18:09:40.690932 | delivered |  1070000.00
+    48116 | 2026-03-15 08:46:27.639836 | shipped   |   730000.00
+     5338 | 2026-03-14 15:11:49.280351 | delivered |  1702000.00
+    33550 | 2026-01-20 03:24:16.071026 | delivered |   409000.00
+    33467 | 2025-10-30 11:05:33.49337  | delivered |  4205000.00
+    32883 | 2025-10-18 01:52:42.128988 | delivered |   165000.00
+    47696 | 2025-10-12 06:06:26.825822 | delivered |  1444000.00
+    14153 | 2025-08-05 22:39:09.078648 | delivered |  2230000.00
+    27031 | 2025-08-02 06:31:21.482798 | delivered |  3495000.00
+    30210 | 2025-05-12 03:12:24.244047 | delivered |   285000.00
+    42840 | 2025-05-05 09:08:52.720368 | paid      |    52000.00
+     7187 | 2025-04-26 06:11:44.039835 | delivered |  3442000.00
+    23624 | 2025-03-18 16:58:50.805701 | delivered |  3559500.00
+    28499 | 2025-03-09 00:22:57.257694 | cancelled |  2190000.00
+    20754 | 2025-02-02 10:18:22.300189 | delivered |   500000.00
+     3873 | 2025-01-26 17:46:55.265966 | delivered |   780000.00
+     1801 | 2025-01-23 03:04:23.986334 | delivered |  2220000.00
+     1934 | 2025-01-11 04:31:46.612583 | delivered |  2039000.00
+(31 rows)
+
+SELECT date_trunc('month', o.order_date)::date AS month,
+       COUNT(DISTINCT o.order_id)          AS orders,
+       SUM(oi.quantity * oi.unit_price)    AS revenue
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.order_id
+WHERE o.status <> 'cancelled'
+  AND o.order_date >= '2026-01-01' AND o.order_date < '2026-11-01'
+GROUP BY 1
+ORDER BY 1;
+   month    | orders |    revenue    
+------------+--------+---------------
+ 2026-01-01 |   2190 | 2855295000.00
+ 2026-02-01 |   2008 | 2579174000.00
+ 2026-03-01 |   2157 | 2863093500.00
+ 2026-04-01 |   2184 | 2870706500.00
+ 2026-05-01 |   2252 | 3011844000.00
+ 2026-06-01 |   2105 | 2829227000.00
+ 2026-07-01 |   2324 | 3020480500.00
+ 2026-08-01 |   2267 | 2969643000.00
+ 2026-09-01 |   2188 | 2954156000.00
+ 2026-10-01 |   1374 | 1779208500.00
+(10 rows)
+
+SELECT p.name AS product, b.name AS brand, c.name AS category,
+       SUM(oi.quantity)                 AS units_sold,
+       SUM(oi.quantity * oi.unit_price) AS revenue
+FROM order_items oi
+JOIN orders o     ON o.order_id    = oi.order_id
+JOIN products p   ON p.product_id  = oi.product_id
+JOIN brands b     ON b.brand_id    = p.brand_id
+JOIN categories c ON c.category_id = p.category_id
+WHERE o.status <> 'cancelled'
+GROUP BY p.product_id, p.name, b.name, c.name
+ORDER BY units_sold DESC
+LIMIT 5;
+        product         | brand |  category   | units_sold |    revenue    
+------------------------+-------+-------------+------------+---------------
+ AirPods Pro 2          | Apple | Audio       |       9222 | 2305490000.00
+ HP Pavilion 15 Core i5 | HP    | Laptops     |       9033 | 7045740000.00
+ Tecno Camon 30 256GB   | Tecno | Smartphones |       9006 | 2566710000.00
+ iPhone 15 128GB        | Apple | Smartphones |       8989 | 8539550000.00
+ iPad 10th Gen 64GB     | Apple | Tablets     |       8979 | 4848660000.00
+(5 rows)
+
+SELECT c.name AS category,
+       SUM(oi.quantity * oi.unit_price) AS revenue
+FROM order_items oi
+JOIN orders o     ON o.order_id    = oi.order_id
+JOIN products p   ON p.product_id  = oi.product_id
+JOIN categories c ON c.category_id = p.category_id
+WHERE o.status <> 'cancelled'
+GROUP BY c.name
+ORDER BY revenue DESC;
+  category   |    revenue     
+-------------+----------------
+ Laptops     | 28154190000.00
+ Smartphones | 21662975000.00
+ Tablets     |  6563880000.00
+ Wearables   |  3142780000.00
+ Audio       |  2556678000.00
+ Accessories |   538795500.00
+(6 rows)
+
+SELECT c.customer_id, c.first_name, c.last_name, c.email
+FROM customers c
+LEFT JOIN orders o ON o.customer_id = c.customer_id
+WHERE o.order_id IS NULL;
+ customer_id | first_name | last_name |         email         
+-------------+------------+-----------+-----------------------
+           8 | Musa       | Danjuma   | musa.danjuma@mail.com
+(1 row)
+
+SELECT sku, name, stock_qty
+FROM products
+WHERE stock_qty < 5
+ORDER BY stock_qty;
+      sku      |           name           | stock_qty 
+---------------+--------------------------+-----------
+ APL-IPAD10-64 | iPad 10th Gen 64GB       |         0
+ XIA-RN13-128  | Redmi Note 13 128GB      |         1
+ APL-MBA-M3    | MacBook Air M3 13-inch   |         3
+ LEN-IDP5-R7   | Lenovo IdeaPad 5 Ryzen 7 |         4
+(4 rows)
+
+SELECT o.order_id, c.email, o.order_date
+FROM orders o
+JOIN customers c ON c.customer_id = o.customer_id
+WHERE o.status = 'pending'
+  AND o.order_date < CURRENT_TIMESTAMP - INTERVAL '3 days'
+ORDER BY o.order_date
+LIMIT 10;
+ order_id |            email            |         order_date         
+----------+-----------------------------+----------------------------
+    26264 | customer1234@muhab-test.com | 2025-01-01 18:24:21.59275
+    48209 | customer498@muhab-test.com  | 2025-01-02 01:10:56.281151
+    20473 | customer1686@muhab-test.com | 2025-01-02 01:55:07.402911
+    10435 | customer1087@muhab-test.com | 2025-01-02 10:39:45.567359
+    16255 | customer356@muhab-test.com  | 2025-01-02 20:47:36.775954
+    40390 | customer1152@muhab-test.com | 2025-01-02 23:00:59.958747
+     5936 | customer1864@muhab-test.com | 2025-01-03 01:20:10.82326
+     7667 | customer695@muhab-test.com  | 2025-01-03 12:48:06.189486
+     6774 | customer1716@muhab-test.com | 2025-01-03 15:12:16.482424
+    10992 | customer862@muhab-test.com  | 2025-01-03 19:08:17.77574
+(10 rows)
+
+SELECT p.name, ROUND(AVG(r.rating), 2) AS avg_rating, COUNT(*) AS reviews
+FROM reviews r
+JOIN products p ON p.product_id = r.product_id
+GROUP BY p.name
+ORDER BY avg_rating DESC, reviews DESC;
+           name           | avg_rating | reviews 
+--------------------------+------------+---------
+ Oraimo 20W USB-C Charger |       5.00 |       1
+ Anker PowerCore 20000mAh |       5.00 |       1
+ iPhone 15 128GB          |       5.00 |       1
+ Samsung Galaxy S24 256GB |       5.00 |       1
+ Xiaomi Smart Band 8      |       4.00 |       1
+ AirPods Pro 2            |       4.00 |       1
+ HP Pavilion 15 Core i5   |       4.00 |       1
+ Oraimo FreePods 4        |       3.00 |       1
+(8 rows)
+
