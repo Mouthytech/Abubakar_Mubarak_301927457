@@ -1,0 +1,20 @@
+ setseed 
+---------
+ 
+(1 row)
+
+INSERT 0 2000
+INSERT 0 2000
+INSERT 0 50000
+INSERT 0 99999
+INSERT 0 45961
+ANALYZE
+ table_name  |  rows  
+-------------+--------
+ addresses   |   2009
+ customers   |   2008
+ payments    |  45972
+ orders      |  50010
+ order_items | 100015
+(5 rows)
+
