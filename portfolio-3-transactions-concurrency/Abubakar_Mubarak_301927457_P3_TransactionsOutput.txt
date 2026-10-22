@@ -1,0 +1,146 @@
+=== T1: successful order with COMMIT ===
+SELECT product_id, name, stock_qty FROM products WHERE product_id = 16;
+ product_id |           name           | stock_qty 
+------------+--------------------------+-----------
+         16 | Oraimo 20W USB-C Charger |        60
+(1 row)
+
+BEGIN;
+BEGIN
+INSERT INTO orders (customer_id, address_id, status)
+VALUES (8, 9, 'paid') RETURNING order_id 
+INSERT 0 1
+INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+SELECT 50012, product_id, 2, unit_price FROM products WHERE product_id = 16;
+INSERT 0 1
+UPDATE products SET stock_qty = stock_qty - 2 WHERE product_id = 16;
+UPDATE 1
+INSERT INTO payments (order_id, amount, method, status)
+VALUES (50012, 19000, 'card', 'successful');
+INSERT 0 1
+COMMIT;
+COMMIT
+--- after COMMIT: stock reduced by 2, and the order exists with its item and payment ---
+SELECT product_id, name, stock_qty FROM products WHERE product_id = 16;
+ product_id |           name           | stock_qty 
+------------+--------------------------+-----------
+         16 | Oraimo 20W USB-C Charger |        58
+(1 row)
+
+SELECT o.order_id, o.status, oi.product_id, oi.quantity, p.amount, p.status AS payment
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.order_id
+JOIN payments p     ON p.order_id  = o.order_id
+WHERE o.order_id = 50012;
+ order_id | status | product_id | quantity |  amount  |  payment   
+----------+--------+------------+----------+----------+------------
+    50012 | paid   |         16 |        2 | 19000.00 | successful
+(1 row)
+
+=== T2: mistake undone with ROLLBACK ===
+SELECT COUNT(*) AS pending_before FROM orders WHERE status = 'pending';
+ pending_before 
+----------------
+           1547
+(1 row)
+
+BEGIN;
+BEGIN
+UPDATE orders SET status = 'cancelled' WHERE status = 'pending';
+UPDATE 1547
+SELECT COUNT(*) AS pending_inside_transaction FROM orders WHERE status = 'pending';
+ pending_inside_transaction 
+----------------------------
+                          0
+(1 row)
+
+ROLLBACK;
+ROLLBACK
+--- after ROLLBACK: the pending orders are back ---
+SELECT COUNT(*) AS pending_after FROM orders WHERE status = 'pending';
+ pending_after 
+---------------
+          1547
+(1 row)
+
+=== T3: atomicity - ordering 2 Redmi phones when only 1 is in stock ===
+SELECT product_id, name, stock_qty FROM products WHERE product_id = 5;
+ product_id |        name         | stock_qty 
+------------+---------------------+-----------
+          5 | Redmi Note 13 128GB |         1
+(1 row)
+
+SELECT COUNT(*) AS orders_before FROM orders;
+ orders_before 
+---------------
+         50011
+(1 row)
+
+BEGIN;
+BEGIN
+INSERT INTO orders (customer_id, address_id, status)
+VALUES (8, 9, 'pending') RETURNING order_id 
+INSERT 0 1
+INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+SELECT 50013, product_id, 2, unit_price FROM products WHERE product_id = 5;
+INSERT 0 1
+UPDATE products SET stock_qty = stock_qty - 2 WHERE product_id = 5;
+psql:portfolio-3-transactions-concurrency/Abubakar_Mubarak_301927457_P3_Transactions.sql:46: ERROR:  new row for relation "products" violates check constraint "products_stock_qty_check"
+DETAIL:  Failing row contains (5, 1, 7, XIA-RN13-128, Redmi Note 13 128GB, 210000.00, -1, t).
+INSERT INTO payments (order_id, amount, method, status)
+VALUES (50013, 420000, 'card', 'successful');
+psql:portfolio-3-transactions-concurrency/Abubakar_Mubarak_301927457_P3_Transactions.sql:48: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
+ROLLBACK
+--- after ROLLBACK: no half-finished order was left behind ---
+SELECT product_id, name, stock_qty FROM products WHERE product_id = 5;
+ product_id |        name         | stock_qty 
+------------+---------------------+-----------
+          5 | Redmi Note 13 128GB |         1
+(1 row)
+
+SELECT COUNT(*) AS orders_after FROM orders;
+ orders_after 
+--------------
+        50011
+(1 row)
+
+=== T4: SAVEPOINT - keep the FreePods, drop the out-of-stock iPad ===
+BEGIN;
+BEGIN
+INSERT INTO orders (customer_id, address_id, status)
+VALUES (8, 9, 'pending') RETURNING order_id 
+INSERT 0 1
+INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+SELECT 50014, product_id, 1, unit_price FROM products WHERE product_id = 12;
+INSERT 0 1
+UPDATE products SET stock_qty = stock_qty - 1 WHERE product_id = 12;
+UPDATE 1
+SAVEPOINT before_ipad;
+SAVEPOINT
+INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+SELECT 50014, product_id, 1, unit_price FROM products WHERE product_id = 10;
+INSERT 0 1
+UPDATE products SET stock_qty = stock_qty - 1 WHERE product_id = 10;
+psql:portfolio-3-transactions-concurrency/Abubakar_Mubarak_301927457_P3_Transactions.sql:66: ERROR:  new row for relation "products" violates check constraint "products_stock_qty_check"
+DETAIL:  Failing row contains (10, 3, 1, APL-IPAD10-64, iPad 10th Gen 64GB, 540000.00, -1, t).
+ROLLBACK TO SAVEPOINT before_ipad;
+ROLLBACK
+COMMIT;
+COMMIT
+--- after COMMIT: the order contains only the FreePods ---
+SELECT oi.order_id, p.name, oi.quantity
+FROM order_items oi JOIN products p ON p.product_id = oi.product_id
+WHERE oi.order_id = 50014;
+ order_id |       name        | quantity 
+----------+-------------------+----------
+    50014 | Oraimo FreePods 4 |        1
+(1 row)
+
+SELECT product_id, name, stock_qty FROM products WHERE product_id IN (10, 12);
+ product_id |        name        | stock_qty 
+------------+--------------------+-----------
+         10 | iPad 10th Gen 64GB |         0
+         12 | Oraimo FreePods 4  |        39
+(2 rows)
+
