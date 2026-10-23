@@ -1,0 +1,8 @@
+MongoDB server version:
+8.0.34
+
+mongosh version:
+2.13.0
+
+Ping:
+{ ok: 1 }
