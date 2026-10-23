@@ -1,0 +1,145 @@
+=== 1. Create products collection with a validation rule ===
+products collection created with $jsonSchema validator and unique index on sku
+
+=== 2. Insert 16 product documents (each category has different specs) ===
+Inserted documents: 16
+
+One full document (smartphone):
+{
+  sku: 'TEC-CAM30-256',
+  name: 'Tecno Camon 30 256GB',
+  brand: 'Tecno',
+  category: 'Smartphones',
+  price: 285000,
+  specs: {
+    storage_gb: 256,
+    ram_gb: 8,
+    screen_in: 6.78,
+    camera_mp: 50,
+    battery_mah: 5000,
+    os: 'Android 14',
+    network: '4G'
+  },
+  colours: [
+    'Black',
+    'Green'
+  ]
+}
+
+One full document (power bank) - completely different specs:
+{
+  sku: 'ANK-PC-20K',
+  name: 'Anker PowerCore 20000mAh',
+  brand: 'Anker',
+  category: 'Accessories',
+  price: 52000,
+  specs: {
+    capacity_mah: 20000,
+    output_w: 20,
+    ports: [
+      'USB-C',
+      'USB-A',
+      'USB-A'
+    ]
+  },
+  reviews: [
+    {
+      customer: 'Aisha B.',
+      rating: 5,
+      comment: 'Very reliable power bank.'
+    }
+  ]
+}
+
+=== Validation tests (both should be rejected) ===
+Rejected as expected (validator): Document failed validation
+Rejected as expected (duplicate sku): E11000 duplicate key error collection: muhab.products index: uniq_sku dup key: { sku: "ORA-FP4" }
+
+=== 3. Queries on specifications ===
+Q1. Smartphones with at least 8GB RAM and a 5000mAh battery:
+[
+  {
+    name: 'Tecno Camon 30 256GB',
+    price: 285000,
+    specs: {
+      ram_gb: 8,
+      battery_mah: 5000
+    }
+  },
+  {
+    name: 'Infinix Hot 40 128GB',
+    price: 165000,
+    specs: {
+      ram_gb: 8,
+      battery_mah: 5000
+    }
+  }
+]
+
+Q2. Anything with noise cancelling:
+[
+  {
+    name: 'AirPods Pro 2',
+    price: 250000
+  },
+  {
+    name: 'Oraimo FreePods 4',
+    price: 28000
+  }
+]
+
+Q3. Products that have a CPU field (only laptops do):
+[
+  {
+    name: 'MacBook Air M3 13-inch',
+    specs: {
+      cpu: 'Apple M3',
+      ram_gb: 8
+    }
+  },
+  {
+    name: 'HP Pavilion 15 Core i5',
+    specs: {
+      cpu: 'Intel Core i5',
+      ram_gb: 8
+    }
+  },
+  {
+    name: 'Lenovo IdeaPad 5 Ryzen 7',
+    specs: {
+      cpu: 'AMD Ryzen 7',
+      ram_gb: 16
+    }
+  }
+]
+
+Q4. Products available in Black (array match):
+[
+  {
+    name: 'iPhone 15 128GB',
+    colours: [
+      'Black',
+      'Blue',
+      'Pink'
+    ]
+  },
+  {
+    name: 'Samsung Galaxy S24 256GB',
+    colours: [
+      'Black',
+      'Grey',
+      'Violet'
+    ]
+  },
+  {
+    name: 'Tecno Camon 30 256GB',
+    colours: [
+      'Black',
+      'Green'
+    ]
+  }
+]
+
+=== 4. Aggregations ===
+A1. Number of products and price range per category:
+MongoServerError: The $round accumulator is a unary operator
