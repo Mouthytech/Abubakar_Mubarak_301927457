@@ -114,8 +114,9 @@ print("\n=== 4. Aggregations ===");
 print("A1. Number of products and price range per category:");
 printjson(db.products.aggregate([
   { $group: { _id: "$category", products: { $sum: 1 },
-              avg_price: { $round: [{ $avg: "$price" }, 0] },
+              avg_price: { $avg: "$price" },
               min_price: { $min: "$price" }, max_price: { $max: "$price" } } },
+  { $set: { avg_price: { $round: ["$avg_price", 0] } } },
   { $sort: { avg_price: -1 } }
 ]).toArray());
 

@@ -142,4 +142,142 @@ Q4. Products available in Black (array match):
 
 === 4. Aggregations ===
 A1. Number of products and price range per category:
-MongoServerError: The $round accumulator is a unary operator
+[
+  {
+    _id: 'Laptops',
+    products: 3,
+    avg_price: 1050000,
+    min_price: 720000,
+    max_price: 1650000
+  },
+  {
+    _id: 'Smartphones',
+    products: 5,
+    avg_price: 486000,
+    min_price: 165000,
+    max_price: 950000
+  },
+  {
+    _id: 'Tablets',
+    products: 2,
+    avg_price: 367500,
+    min_price: 195000,
+    max_price: 540000
+  },
+  {
+    _id: 'Wearables',
+    products: 2,
+    avg_price: 177500,
+    min_price: 45000,
+    max_price: 310000
+  },
+  {
+    _id: 'Audio',
+    products: 2,
+    avg_price: 139000,
+    min_price: 28000,
+    max_price: 250000
+  },
+  {
+    _id: 'Accessories',
+    products: 2,
+    avg_price: 30750,
+    min_price: 9500,
+    max_price: 52000
+  }
+]
+
+A2. Average rating per product from embedded reviews:
+[
+  {
+    _id: 'Anker PowerCore 20000mAh',
+    avg_rating: 5,
+    reviews: 1
+  },
+  {
+    _id: 'Oraimo 20W USB-C Charger',
+    avg_rating: 5,
+    reviews: 1
+  },
+  {
+    _id: 'Samsung Galaxy S24 256GB',
+    avg_rating: 5,
+    reviews: 1
+  },
+  {
+    _id: 'iPhone 15 128GB',
+    avg_rating: 5,
+    reviews: 1
+  },
+  {
+    _id: 'AirPods Pro 2',
+    avg_rating: 4,
+    reviews: 1
+  },
+  {
+    _id: 'HP Pavilion 15 Core i5',
+    avg_rating: 4,
+    reviews: 1
+  },
+  {
+    _id: 'Xiaomi Smart Band 8',
+    avg_rating: 4,
+    reviews: 1
+  },
+  {
+    _id: 'Oraimo FreePods 4',
+    avg_rating: 3,
+    reviews: 1
+  }
+]
+
+=== 5. Schema evolution: add new specs to one phone only ===
+{
+  name: 'Redmi Note 13 128GB',
+  specs: {
+    storage_gb: 128,
+    ram_gb: 6,
+    screen_in: 6.67,
+    camera_mp: 108,
+    battery_mah: 5000,
+    os: 'Android 13',
+    network: '4G',
+    charging_w: 33,
+    nfc: true
+  }
+}
+
+=== 6. Index: query plan before and after ===
+Before index: stages = COLLSCAN | docsExamined = 16 | keysExamined = 0 | returned = 3
+After index : stages = FETCH <- IXSCAN | docsExamined = 3 | keysExamined = 3 | returned = 3
+Indexes on products: _id_, uniq_sku, idx_category_ram
+
+=== 7. Key-value style: shopping carts (key = customer) ===
+Cart after adding two items:
+{
+  _id: 'cart:customer:25',
+  items: [
+    {
+      sku: 'APL-APP2',
+      qty: 1
+    },
+    {
+      sku: 'ANK-PC-20K',
+      qty: 2
+    }
+  ],
+  updated_at: ISODate('2026-10-23T19:01:00.814Z')
+}
+Cart after removing AirPods:
+{
+  _id: 'cart:customer:25',
+  items: [
+    {
+      sku: 'ANK-PC-20K',
+      qty: 2
+    }
+  ],
+  updated_at: ISODate('2026-10-23T19:01:00.817Z')
+}
+Cart lookup by key: stages = EXPRESS_IXSCAN | docsExamined = 1 | keysExamined = 1 | returned = 1
+Carts not updated for 7 days are deleted automatically by the TTL index.
