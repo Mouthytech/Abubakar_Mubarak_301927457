@@ -1,0 +1,62 @@
+=== 0. Clean start (stop any old nodes, empty data folders) ===
+  done
+
+=== 1. Start three MongoDB nodes (ports 27018, 27019, 27020) ===
+  started mongod on port 27018
+  started mongod on port 27019
+  started mongod on port 27020
+
+=== 2. Initiate replica set rs0 and wait for an election ===
+{
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1792868578, i: 1 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1792868578, i: 1 })
+}
+  primary elected: localhost:27018
+  localhost:27018  PRIMARY
+  localhost:27019  SECONDARY
+  localhost:27020  SECONDARY
+
+=== 3. Write catalogue documents to the primary with writeConcern majority ===
+  inserted 3 documents on primary localhost:27018 (acknowledged by a majority)
+
+=== 4. Read from every node: the data has been replicated ===
+  localhost:27018  PRIMARY    products = 3
+  localhost:27019  SECONDARY  products = 3
+  localhost:27020  SECONDARY  products = 3
+
+=== 5. Failover: shut down the primary ===
+  current primary: localhost:27018 -> shutting it down
+  new primary elected: localhost:27019 (after about 0 seconds)
+  localhost:27018  (not reachable/healthy)  (unreachable)
+  localhost:27019  PRIMARY
+  localhost:27020  SECONDARY
+
+=== 6. The shop keeps working: write to the new primary ===
+  write accepted by localhost:27019; products now = 4
+
+=== 7. Recovery: restart the old primary; it rejoins as a SECONDARY and catches up ===
+  started mongod on port 27018
+  localhost:27018 is now SECONDARY; products = 4 (includes the write made while it was down)
+  localhost:27018  SECONDARY
+  localhost:27019  PRIMARY
+  localhost:27020  SECONDARY
+
+=== 8. Replication lag of each secondary ===
+source: localhost:27018
+{
+  syncedTo: 'Sat Oct 24 2026 19:03:34 GMT+0000 (Coordinated Universal Time)',
+  replLag: '0 secs (0 hrs) behind the primary '
+}
+---
+source: localhost:27020
+{
+  syncedTo: 'Sat Oct 24 2026 19:03:34 GMT+0000 (Coordinated Universal Time)',
+  replLag: '0 secs (0 hrs) behind the primary '
+}
